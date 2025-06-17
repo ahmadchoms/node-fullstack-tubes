@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Penerima</title>
+</head>
+
+<body>
+    <div style="display: flex; justify-content: space-between;">
+        <h1>Manajemen Penerima</h1>
+        <button onclick="window.location.href = 'index.html'">Kembali</button>
+    </div>
+    <form id="penerimaForm">
+        <fieldset>
+            <legend>Informasi Pribadi</legend>
+            <label for="nama">Nama Penerima:</label>
+            <input type="text" id="nama" placeholder="Nama Penerima" required>
+            <label for="nik">NIK:</label>
+            <input type="text" id="nik" placeholder="NIK" required>
+        </fieldset>
+        <fieldset>
+            <legend>Alamat</legend>
+            <label for="alamat_jalan">Jalan:</label>
+            <input type="text" id="alamat_jalan" placeholder="Jalan" required>
+            <label for="alamat_desa">Desa:</label>
+            <input type="text" id="alamat_desa" placeholder="Desa" required>
+            <label for="alamat_kecamatan">Kecamatan:</label>
+            <input type="text" id="alamat_kecamatan" placeholder="Kecamatan" required>
+        </fieldset>
+        <fieldset>
+            <legend>Wilayah</legend>
+            <label for="wilayah_id">Pilih Wilayah:</label>
+            <select id="wilayah_id" required>
+                <option value="" disabled selected>Pilih Wilayah</option>
+            </select>
+        </fieldset>
+        <fieldset>
+            <legend>Kebutuhan Khusus</legend>
+            <label><input type="checkbox" name="category" value="Lansia"> Lansia</label>
+            <label><input type="checkbox" name="category" value="Disabilitas Fisik"> Disabilitas Fisik</label>
+            <label><input type="checkbox" name="category" value="Disabilitas Mental"> Disabilitas Mental</label>
+            <label><input type="checkbox" name="category" value="Anak-anak"> Anak-anak</label>
+            <label><input type="checkbox" name="category" value="Ibu Hamil"> Ibu Hamil</label>
+            <label><input type="checkbox" name="category" value="Ibu Menyusui"> Ibu Menyusui</label>
+            <label><input type="checkbox" name="category" value="ODGJ"> ODGJ</label>
+            <label><input type="checkbox" name="category" value="ODP/OTG/PDP"> ODP/OTG/PDP</label>
+            <label><input type="checkbox" name="category" value="Korban Bencana"> Korban Bencana</label>
+            <label><input type="checkbox" name="category" value="Pekerja Rentan"> Pekerja Rentan</label>
+            <label><input type="checkbox" name="category" value="Penyakit Kronis"> Penyakit Kronis</label>
+            <label><input type="checkbox" name="category" value="Yatim Piatu"> Yatim Piatu</label>
+            <label><input type="checkbox" name="category" value="Tunawisma"> Tunawisma</label>
+            <label><input type="checkbox" name="category" value="Miskin Ekstrem"> Keluarga Miskin Ekstrem</label>
+        </fieldset>
+        <button type="submit">Tambah Penerima</button>
+        </form>
+    <h2>Daftar Penerima</h2>
+    <table border="1" id="penerimaTable">
+        <thead>
+            <tr>
+                <th>Nama</th>
+                <th>NIK</th>
+                <th>Wilayah</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="penerimaList"></tbody>
+    </table>
+
+
+    <script>
+        const apiUrl = "http://localhost:3000/api/recipient";
+        const wilayahApiUrl = "http://localhost:3000/api/region";
+
+        async function loadWilayahOptions() {
+            const res = await fetch(wilayahApiUrl);
+            const wilayahData = await res.json();
+            const select = document.getElementById("wilayah_id");
+            select.innerHTML = '<option value="" disabled selected>Pilih Wilayah</option>';
+            wilayahData.forEach(wilayah => {
+                const option = document.createElement("option");
+                option.value = wilayah._id;
+                option.textContent = `${wilayah.nama_wilayah}, ${wilayah.kecamatan}`;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadPenerima() {
+            const res = await fetch(apiUrl);
+            const data = await res.json();
+            const list = document.getElementById("penerimaList");
+            list.innerHTML = "";
+            data.forEach(penerima => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${penerima.nama}</td>
+                    <td>${penerima.nik}</td>
+                    <td>${penerima.wilayah_id.nama_wilayah}</td>
+                    <td>
+                        <button onClick="deletePenerima('${penerima._id}')">Hapus</button>
+                        <button onClick="editPenerima(
+                            '${penerima._id}', 
+                            '${penerima.nama}', 
+                            '${penerima.alamat.jalan}', 
+                            '${penerima.alamat.desa}', 
+                            '${penerima.alamat.kecamatan}', 
+                            '${penerima.nik}', 
+                            '${penerima.kebutuhan_khusus.join(',')}', 
+                            '${penerima.wilayah_id._id}'
+                        )">Edit</button>
+                    </td>
+                `;
+                list.appendChild(tr);
+            });
+
+        }
+
+        async function tambahPenerima(e) {
+                e.preventDefault();
+
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+
+                let maxId = 0;
+                if (data.length > 0) {
+                    maxId = Math.max(...data.map(penerima => parseInt(penerima._id || 0)));
+                }
+
+                const newId = maxId + 1;
+
+                const nama = document.getElementById("nama").value;
+                const alamat_jalan = document.getElementById("alamat_jalan").value;
+                const alamat_desa = document.getElementById("alamat_desa").value;
+                const alamat_kecamatan = document.getElementById("alamat_kecamatan").value;
+                const nik = document.getElementById("nik").value;
+                const kebutuhan_khusus = Array.from(document.querySelectorAll('input[name="category"]:checked')).map(input => input.value);
+                const wilayah_id = document.getElementById("wilayah_id").value;
+
+                await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        _id: newId,
+                        nama,
+                        alamat: { jalan: alamat_jalan, desa: alamat_desa, kecamatan: alamat_kecamatan },
+                        nik,
+                        kebutuhan_khusus,
+                        wilayah_id
+                    })
+                });
+
+                document.getElementById("penerimaForm").reset();
+                loadPenerima();
+            }
+        
+        async function deletePenerima(id) {
+            await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+            loadPenerima();
+        }
+
+        function editPenerima(id, nama, alamat_jalan, alamat_desa, alamat_kecamatan, nik, kebutuhan_khusus, wilayah_id) {
+            document.getElementById("nama").value = nama;
+            document.getElementById("alamat_jalan").value = alamat_jalan;
+            document.getElementById("alamat_desa").value = alamat_desa;
+            document.getElementById("alamat_kecamatan").value = alamat_kecamatan;
+            document.getElementById("nik").value = nik;
+            document.getElementById("wilayah_id").value = wilayah_id;
+            const checkboxes = document.querySelectorAll('input[name="category"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = kebutuhan_khusus.split(',').includes(checkbox.value);
+            });
+
+            const form = document.getElementById("penerimaForm");
+            form.querySelector("button[type='submit']").textContent = "Update Penerima";
+
+
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const updatedKebutuhanKhusus = Array.from(document.querySelectorAll('input[name="category"]:checked')).map(input => input.value);
+                await fetch(`${apiUrl}/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        nama: document.getElementById("nama").value,
+                        alamat: {
+                            jalan: document.getElementById("alamat_jalan").value,
+                            desa: document.getElementById("alamat_desa").value,
+                            kecamatan: document.getElementById("alamat_kecamatan").value
+                        },
+                        nik: document.getElementById("nik").value,
+                        kebutuhan_khusus: updatedKebutuhanKhusus,
+                        wilayah_id: document.getElementById("wilayah_id").value
+                    })
+                });
+                form.querySelector("button[type='submit']").textContent = "Tambah Penerima";
+                form.reset();
+                form.onsubmit = tambahPenerima;
+                loadPenerima();
+            };
+        }
+
+        document.getElementById("penerimaForm").onsubmit = tambahPenerima;
+        loadPenerima();
+        loadWilayahOptions();
+    </script>
+</body>
+
+</html>

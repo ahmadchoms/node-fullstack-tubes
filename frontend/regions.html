@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Wilayah</title>
+</head>
+
+<body>
+    <div style="display: flex; justify-content: space-between;">
+        <h1>Manajemen Wilayah</h1>
+        <button onclick="window.location.href = 'index.html'">Kembali</button>
+    </div>
+    <form id="wilayahForm">
+        <fieldset>
+            <legend>Informasi Wilayah</legend>
+            <label for="nama_wilayah">Nama Wilayah:</label>
+            <input type="text" id="nama_wilayah" placeholder="Nama Wilayah" required>
+            <label for="kecamatan">Kecamatan:</label>
+            <input type="text" id="kecamatan" placeholder="Kecamatan" required>
+            <label for="kabupaten">Kabupaten:</label>
+            <input type="text" id="kabupaten" placeholder="Kabupaten" required>
+            <label for="provinsi">Provinsi:</label>
+            <input type="text" id="provinsi" placeholder="Provinsi" required>
+        </fieldset>
+        <button type="submit">Tambah Wilayah</button>
+    </form>
+    <h2>Daftar Wilayah</h2>
+    <table border="1" id="wilayahTable">
+        <thead>
+            <tr>
+                <th>Nama Wilayah</th>
+                <th>Kecamatan</th>
+                <th>Kabupaten</th>
+                <th>Provinsi</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="wilayahList"></tbody>
+    </table>
+
+    <script>
+        const apiUrl = "http://localhost:3000/api/region";
+
+        async function loadWilayah() {
+            const res = await fetch(apiUrl);
+            const data = await res.json();
+            const list = document.getElementById("wilayahList");
+            list.innerHTML = "";
+            data.forEach(wilayah => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${wilayah.nama_wilayah}</td>
+                    <td>${wilayah.kecamatan}</td>
+                    <td>${wilayah.kabupaten}</td>
+                    <td>${wilayah.provinsi}</td>
+                    <td>
+                        <button onclick="deleteWilayah('${wilayah._id}')">Hapus</button>
+                        <button onclick="editWilayah(
+                            '${wilayah._id}',
+                            '${wilayah.nama_wilayah}',
+                            '${wilayah.kecamatan}',
+                            '${wilayah.kabupaten}',
+                            '${wilayah.provinsi}'
+                        )">Edit</button>
+                    </td>
+                `;
+                list.appendChild(tr);
+            });
+        }
+
+        async function tambahWilayah(e) {
+            e.preventDefault();
+            const res = await fetch(apiUrl);
+            const data = await res.json();
+            let maxId = 0;
+            if (data.length > 0) {
+                maxId = Math.max(...data.map(wilayah => parseInt(wilayah._id || 0)));
+            }
+            const newId = maxId + 1;
+
+            const nama_wilayah = document.getElementById("nama_wilayah").value;
+            const kecamatan = document.getElementById("kecamatan").value;
+            const kabupaten = document.getElementById("kabupaten").value;
+            const provinsi = document.getElementById("provinsi").value;
+
+            await fetch(apiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    _id: newId.toString(),
+                    nama_wilayah,
+                    kecamatan,
+                    kabupaten,
+                    provinsi
+                })
+            });
+
+            document.getElementById("wilayahForm").reset();
+            loadWilayah();
+        }
+
+        async function deleteWilayah(id) {
+            await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+            loadWilayah();
+        }
+
+        function editWilayah(id, nama_wilayah, kecamatan, kabupaten, provinsi) {
+            document.getElementById("nama_wilayah").value = nama_wilayah;
+            document.getElementById("kecamatan").value = kecamatan;
+            document.getElementById("kabupaten").value = kabupaten;
+            document.getElementById("provinsi").value = provinsi;
+
+            const form = document.getElementById("wilayahForm");
+            form.querySelector("button[type='submit']").textContent = "Update Wilayah";
+
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                await fetch(`${apiUrl}/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        nama_wilayah: document.getElementById("nama_wilayah").value,
+                        kecamatan: document.getElementById("kecamatan").value,
+                        kabupaten: document.getElementById("kabupaten").value,
+                        provinsi: document.getElementById("provinsi").value
+                    })
+                });
+                form.querySelector("button[type='submit']").textContent = "Tambah Wilayah";
+                form.reset();
+                form.onsubmit = tambahWilayah;
+                loadWilayah();
+            };
+        }
+
+        document.getElementById("wilayahForm").onsubmit = tambahWilayah;
+        loadWilayah();
+    </script>
+</body>
+
+</html>

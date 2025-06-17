@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Laporan</title>
+</head>
+
+<body>
+    <div style="display: flex; justify-content: space-between;">
+        <h1>Manajemen Laporan</h1>
+        <button onclick="window.location.href = 'index.html'">Kembali</button>
+    </div>
+    <form id="laporanForm">
+        <fieldset>
+            <legend>Informasi Laporan</legend>
+            <label for="penerima_id">Pilih Penerima:</label>
+            <select id="penerima_id" required>
+                <option value="" disabled selected>Pilih Penerima</option>
+            </select>
+            <label for="bantuan_id">Pilih Bantuan:</label>
+            <select id="bantuan_id" required>
+                <option value="" disabled selected>Pilih Bantuan</option>
+            </select>
+            <label for="petugas_id">Pilih Petugas:</label>
+            <select id="petugas_id" required>
+                <option value="" disabled selected>Pilih Petugas</option>
+            </select>
+            <label for="tanggal_laporan">Tanggal Laporan:</label>
+            <input type="datetime-local" id="tanggal_laporan" required>
+            <label for="jumlah">Jumlah:</label>
+            <input type="number" id="jumlah" placeholder="Jumlah" required>
+            <label for="status">Status:</label>
+            <select id="status" required>
+                <option value="" disabled selected>Pilih Status</option>
+                <option value="Terdistribusi">Terdistribusi</option>
+                <option value="Pending">Pending</option>
+            </select>
+        </fieldset>
+        <button type="submit">Tambah Laporan</button>
+    </form>
+    <h2>Daftar Laporan</h2>
+    <table border="1" id="laporanTable">
+        <thead>
+            <tr>
+                <th>Penerima</th>
+                <th>Bantuan</th>
+                <th>Petugas</th>
+                <th>Tanggal Laporan</th>
+                <th>Jumlah</th>
+                <th>Status</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="laporanList"></tbody>
+    </table>
+
+    <script>
+        const apiUrl = "http://localhost:3000/api/report";
+        const penerimaApiUrl = "http://localhost:3000/api/recipient";
+        const bantuanApiUrl = "http://localhost:3000/api/assistance";
+        const petugasApiUrl = "http://localhost:3000/api/officer";
+
+        async function loadPenerimaOptions() {
+                const res = await fetch(penerimaApiUrl);
+                const penerimaData = await res.json();
+                const select = document.getElementById("penerima_id");
+                select.innerHTML = '<option value="" disabled selected>Pilih Penerima</option>';
+                penerimaData.forEach(penerima => {
+                    const option = document.createElement("option");
+                    option.value = penerima._id;
+                    option.textContent = `${penerima.nama}`;
+                    select.appendChild(option);
+                });
+            }
+
+        async function loadBantuanOptions() {
+                const res = await fetch(bantuanApiUrl);
+                const bantuanData = await res.json();
+                const select = document.getElementById("bantuan_id");
+                select.innerHTML = '<option value="" disabled selected>Pilih Bantuan</option>';
+                bantuanData.forEach(bantuan => {
+                    const option = document.createElement("option");
+                    option.value = bantuan._id;
+                    option.textContent = `${bantuan.nama_bantuan}`;
+                    select.appendChild(option);
+                });
+            }
+
+        async function loadPetugasOptions() {
+                const res = await fetch(petugasApiUrl);
+                const petugasData = await res.json();
+                const select = document.getElementById("petugas_id");
+                select.innerHTML = '<option value="" disabled selected>Pilih Petugas</option>';
+                petugasData.forEach(petugas => {
+                    const option = document.createElement("option");
+                    option.value = petugas._id;
+                    option.textContent = `${petugas.nama}`;
+                    select.appendChild(option);
+                });
+            }
+
+        async function loadLaporan() {
+            const res = await fetch(apiUrl);
+            const data = await res.json();
+            console.log(data);
+            const list = document.getElementById("laporanList");
+            list.innerHTML = "";
+            data.forEach(laporan => {
+                const tr = document.createElement("tr");
+                const date = new Date(laporan.tanggal_distribusi);
+                tr.innerHTML = `
+                    <td>${laporan.penerima_id.nama}</td>
+                    <td>${laporan.bantuan_id.nama_bantuan}</td>
+                    <td>${laporan.petugas_id.nama}</td>
+                    <td>${date.toLocaleString()}</td>
+                    <td>${laporan.jumlah}</td>
+                    <td>${laporan.status}</td>
+                    <td>
+                        <button onclick="deleteLaporan('${laporan._id}')">Hapus</button>
+                        <button onclick="editLaporan(
+                            '${laporan._id}',
+                            '${laporan.penerima_id._id}',
+                            '${laporan.bantuan_id._id}',
+                            '${laporan.petugas_id._id}',
+                            '${date.toISOString().slice(0, 16)}',
+                            '${laporan.jumlah}',
+                            '${laporan.status}'
+                        )">Edit</button>
+                    </td>
+                `;
+                list.appendChild(tr);
+            });
+        }
+
+        async function tambahLaporan(e) {
+            e.preventDefault();
+            const res = await fetch(apiUrl);
+            const data = await res.json();
+            let maxId = 0;
+            if (data.length > 0) {
+                maxId = Math.max(...data.map(laporan => parseInt(laporan._id || 0)));
+            }
+            const newId = maxId + 1;
+
+            const penerima_id = document.getElementById("penerima_id").value;
+            const bantuan_id = document.getElementById("bantuan_id").value;
+            const petugas_id = document.getElementById("petugas_id").value;
+            const tanggal_laporan = document.getElementById("tanggal_laporan").value;
+            const jumlah = document.getElementById("jumlah").value;
+            const status = document.getElementById("status").value;
+
+            await fetch(apiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    _id: newId.toString(),
+                    penerima_id: parseInt(penerima_id),
+                    bantuan_id: parseInt(bantuan_id),
+                    petugas_id: parseInt(petugas_id),
+                    tanggal_laporan: new Date(tanggal_laporan).toISOString(),
+                    jumlah: parseInt(jumlah),
+                    status
+                })
+            });
+
+            document.getElementById("laporanForm").reset();
+            loadLaporan();
+        }
+
+        async function deleteLaporan(id) {
+            await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+            loadLaporan();
+        }
+
+        function editLaporan(id, penerima_id, bantuan_id, petugas_id, tanggal_laporan, jumlah, status) {
+            document.getElementById("penerima_id").value = penerima_id;
+            document.getElementById("bantuan_id").value = bantuan_id;
+            document.getElementById("petugas_id").value = petugas_id;
+            document.getElementById("tanggal_laporan").value = tanggal_laporan;
+            document.getElementById("jumlah").value = jumlah;
+            document.getElementById("status").value = status;
+
+            const form = document.getElementById("laporanForm");
+            form.querySelector("button[type='submit']").textContent = "Update Laporan";
+
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                await fetch(`${apiUrl}/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        penerima_id: parseInt(document.getElementById("penerima_id").value),
+                        bantuan_id: parseInt(document.getElementById("bantuan_id").value),
+                        petugas_id: parseInt(document.getElementById("petugas_id").value),
+                        tanggal_laporan: new Date(document.getElementById("tanggal_laporan").value).toISOString(),
+                        jumlah: parseInt(document.getElementById("jumlah").value),
+                        status: document.getElementById("status").value
+                    })
+                });
+                form.querySelector("button[type='submit']").textContent = "Tambah Laporan";
+                form.reset();
+                form.onsubmit = tambahLaporan;
+                loadLaporan();
+            };
+        }
+
+        document.getElementById("laporanForm").onsubmit = tambahLaporan;
+        loadLaporan();
+        loadPenerimaOptions();
+        loadBantuanOptions();
+        loadPetugasOptions();
+    </script>
+</body>
+
+</html>

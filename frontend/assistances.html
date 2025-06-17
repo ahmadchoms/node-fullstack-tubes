@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Bantuan</title>
+</head>
+
+<body>
+    <div style="display: flex; justify-content: space-between;">
+        <h1>Manajemen Bantuan</h1>
+        <button onclick="window.location.href = 'index.html'">Kembali</button>
+    </div>
+    <form id="bantuanForm">
+        <fieldset>
+            <legend>Informasi Bantuan</legend>
+            <label for="nama_bantuan">Nama Bantuan:</label>
+            <input type="text" id="nama_bantuan" placeholder="Nama Bantuan" required>
+            <label for="kategori">Kategori:</label>
+            <select id="kategori" required>
+                <option value="" disabled selected>Pilih Kategori</option>
+                <option value="Pangan">Pangan</option>
+                <option value="Kesehatan">Kesehatan</option>
+                <option value="Pendidikan">Pendidikan</option>
+                <option value="Lainnya">Lainnya</option>
+            </select>
+            <label for="deskripsi">Deskripsi:</label>
+            <textarea id="deskripsi" placeholder="Deskripsi Bantuan" required rows="1"></textarea>
+            <label for="nilai">Nilai (Rp):</label>
+            <input type="number" id="nilai" placeholder="Nilai Bantuan" required>
+        </fieldset>
+        <button type="submit">Tambah Bantuan</button>
+    </form>
+    <h2>Daftar Bantuan</h2>
+    <table border="1" id="bantuanTable">
+        <thead>
+            <tr>
+                <th>Nama Bantuan</th>
+                <th>Kategori</th>
+                <th>Deskripsi</th>
+                <th>Nilai (Rp)</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="bantuanList"></tbody>
+    </table>
+
+    <script>
+        const apiUrl = "http://localhost:3000/api/assistance";
+
+        async function loadBantuan() {
+            try {
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+                const list = document.getElementById("bantuanList");
+                list.innerHTML = "";
+                data.forEach(bantuan => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${bantuan.nama_bantuan}</td>
+                        <td>${bantuan.kategori}</td>
+                        <td>${bantuan.deskripsi}</td>
+                        <td>${bantuan.nilai.toLocaleString('id-ID')}</td>
+                        <td>
+                            <button onclick="deleteBantuan('${bantuan._id}')">Hapus</button>
+                            <button onclick="editBantuan(
+                                '${bantuan._id}',
+                                '${bantuan.nama_bantuan}',
+                                '${bantuan.kategori}',
+                                '${bantuan.deskripsi}',
+                                '${bantuan.nilai}'
+                            )">Edit</button>
+                        </td>
+                    `;
+                    list.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Error loading bantuan:", error);
+            }
+        }
+
+        async function tambahBantuan(e) {
+            e.preventDefault();
+            try {
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+                let maxId = 0;
+                if (data.length > 0) {
+                    maxId = Math.max(...data.map(bantuan => parseInt(bantuan._id || 0)));
+                }
+                const newId = maxId + 1;
+
+                const nama_bantuan = document.getElementById("nama_bantuan").value;
+                const kategori = document.getElementById("kategori").value;
+                const deskripsi = document.getElementById("deskripsi").value;
+                const nilai = document.getElementById("nilai").value;
+
+                await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        _id: newId.toString(),
+                        nama_bantuan,
+                        kategori,
+                        deskripsi,
+                        nilai: parseInt(nilai)
+                    })
+                });
+
+                document.getElementById("bantuanForm").reset();
+                loadBantuan();
+            } catch (error) {
+                console.error("Error adding bantuan:", error);
+            }
+        }
+
+        async function deleteBantuan(id) {
+            try {
+                await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+                loadBantuan();
+            } catch (error) {
+                console.error("Error deleting bantuan:", error);
+            }
+        }
+
+        function editBantuan(id, nama_bantuan, kategori, deskripsi, nilai) {
+            document.getElementById("nama_bantuan").value = nama_bantuan;
+            document.getElementById("kategori").value = kategori;
+            document.getElementById("deskripsi").value = deskripsi;
+            document.getElementById("nilai").value = nilai;
+
+            const form = document.getElementById("bantuanForm");
+            form.querySelector("button[type='submit']").textContent = "Update Bantuan";
+
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    await fetch(`${apiUrl}/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            nama_bantuan: document.getElementById("nama_bantuan").value,
+                            kategori: document.getElementById("kategori").value,
+                            deskripsi: document.getElementById("deskripsi").value,
+                            nilai: parseInt(document.getElementById("nilai").value)
+                        })
+                    });
+                    form.querySelector("button[type='submit']").textContent = "Tambah Bantuan";
+                    form.reset();
+                    form.onsubmit = tambahBantuan;
+                    loadBantuan();
+                } catch (error) {
+                    console.error("Error updating bantuan:", error);
+                }
+            };
+        }
+
+        document.getElementById("bantuanForm").onsubmit = tambahBantuan;
+        loadBantuan();
+    </script>
+</body>
+
+</html>

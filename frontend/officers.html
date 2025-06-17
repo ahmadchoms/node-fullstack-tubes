@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Petugas</title>
+</head>
+
+<body>
+    <div style="display: flex; justify-content: space-between;">
+        <h1>Manajemen Petugas</h1>
+        <button onclick="window.location.href = 'index.html'">Kembali</button>
+    </div>
+    <form id="petugasForm">
+        <fieldset>
+            <legend>Informasi Petugas</legend>
+            <label for="nama">Nama:</label>
+            <input type="text" id="nama" placeholder="Nama Petugas" required>
+            <label for="telepon">Telepon:</label>
+            <input type="tel" id="telepon" placeholder="Telepon" required>
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="Email" required>
+            <label for="wilayah_id">Wilayah:</label>
+            <select id="wilayah_id" required>
+                <option value="" disabled selected>Pilih Wilayah</option>
+            </select>
+        </fieldset>
+        <button type="submit">Tambah Petugas</button>
+    </form>
+    <h2>Daftar Petugas</h2>
+    <table border="1" id="petugasTable">
+        <thead>
+            <tr>
+                <th>Nama</th>
+                <th>Telepon</th>
+                <th>Email</th>
+                <th>Wilayah</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="petugasList"></tbody>
+    </table>
+
+    <script>
+        const apiUrl = "http://localhost:3000/api/officer";
+        const wilayahApiUrl = "http://localhost:3000/api/region";
+
+        async function loadWilayahOptions() {
+            try {
+                const res = await fetch(wilayahApiUrl);
+                const wilayahData = await res.json();
+                const select = document.getElementById("wilayah_id");
+                select.innerHTML = '<option value="" disabled selected>Pilih Wilayah</option>';
+                wilayahData.forEach(wilayah => {
+                    const option = document.createElement("option");
+                    option.value = wilayah._id;
+                    option.textContent = `${wilayah.nama_wilayah}, ${wilayah.kecamatan}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error loading wilayah options:", error);
+            }
+        }
+
+        async function loadPetugas() {
+            try {
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+                const list = document.getElementById("petugasList");
+                list.innerHTML = "";
+                data.forEach(petugas => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${petugas.nama}</td>
+                        <td>${petugas.kontak.telepon}</td>
+                        <td>${petugas.kontak.email}</td>
+                        <td>${petugas.wilayah_id.nama_wilayah}</td>
+                        <td>
+                            <button onclick="deletePetugas('${petugas._id}')">Hapus</button>
+                            <button onclick="editPetugas(
+                                '${petugas._id}',
+                                '${petugas.nama}',
+                                '${petugas.kontak.telepon}',
+                                '${petugas.kontak.email}',
+                                '${petugas.wilayah_id._id}'
+                            )">Edit</button>
+                        </td>
+                    `;
+                    list.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Error loading petugas:", error);
+            }
+        }
+
+        async function tambahPetugas(e) {
+            e.preventDefault();
+            try {
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+                let maxId = 0;
+                if (data.length > 0) {
+                    maxId = Math.max(...data.map(petugas => parseInt(petugas._id || 0)));
+                }
+                const newId = maxId + 1;
+
+                const nama = document.getElementById("nama").value;
+                const telepon = document.getElementById("telepon").value;
+                const email = document.getElementById("email").value;
+                const wilayah_id = document.getElementById("wilayah_id").value;
+
+                await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        _id: newId.toString(),
+                        nama,
+                        kontak: { telepon, email },
+                        wilayah_id: parseInt(wilayah_id)
+                    })
+                });
+
+                document.getElementById("petugasForm").reset();
+                loadPetugas();
+            } catch (error) {
+                console.error("Error adding petugas:", error);
+            }
+        }
+
+        async function deletePetugas(id) {
+            try {
+                await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+                loadPetugas();
+            } catch (error) {
+                console.error("Error deleting petugas:", error);
+            }
+        }
+
+        function editPetugas(id, nama, telepon, email, wilayah_id) {
+            document.getElementById("nama").value = nama;
+            document.getElementById("telepon").value = telepon;
+            document.getElementById("email").value = email;
+            document.getElementById("wilayah_id").value = wilayah_id;
+
+            const form = document.getElementById("petugasForm");
+            form.querySelector("button[type='submit']").textContent = "Update Petugas";
+
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    await fetch(`${apiUrl}/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            nama: document.getElementById("nama").value,
+                            kontak: {
+                                telepon: document.getElementById("telepon").value,
+                                email: document.getElementById("email").value
+                            },
+                            wilayah_id: parseInt(document.getElementById("wilayah_id").value)
+                        })
+                    });
+                    form.querySelector("button[type='submit']").textContent = "Tambah Petugas";
+                    form.reset();
+                    form.onsubmit = tambahPetugas;
+                    loadPetugas();
+                } catch (error) {
+                    console.error("Error updating petugas:", error);
+                }
+            };
+        }
+
+        document.getElementById("petugasForm").onsubmit = tambahPetugas;
+        loadPetugas();
+        loadWilayahOptions();
+    </script>
+</body>
+
+</html>
