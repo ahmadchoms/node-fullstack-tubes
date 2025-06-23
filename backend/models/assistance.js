@@ -5,8 +5,8 @@ const assistanceSchema = new mongoose.Schema({
   nama_bantuan: { type: String, required: true },
   kategori: {
     type: String,
-    required: true,
     enum: ["Pangan", "Kesehatan", "Pendidikan", "Infrastruktur", "Lainnya"],
+    required: true,
   },
   deskripsi: { type: String, required: true },
   nilai: { type: Number, required: true },
